@@ -124,3 +124,16 @@ export interface ResearchRoadmap {
   };
   timestamp: string;
 }
+
+export interface Paper {
+  source: string;
+  title: string;
+  authors: string;
+  year: number | null;
+  abstract: string;
+  citationCount: number | null;
+  url: string | null;
+  doi: string | null;
+  score?: number;
+  relevanceScore?: number;
+}

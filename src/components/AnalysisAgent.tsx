@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { analysisAgent } from "../services/geminiService";
-import type { TrendDataContract } from "../types";
+import type { TrendDataContract, Paper } from "../types";
 
 // ── Sample seed data ──────────────────────────────────────────────────────────
 const SEED_DATA = [
@@ -402,9 +402,25 @@ function EmergingTopics({ data }: { data: any[] }) {
 }
 
 // ── Main App ───────────────────────────────────────────────────────────────────
-export default function AnalysisAgent({ onHandoff }: { onHandoff?: (data: TrendDataContract) => void }) {
+export default function AnalysisAgent({ onHandoff, initialPapers = [], onLog }: { onHandoff?: (data: TrendDataContract) => void, initialPapers?: Paper[], onLog?: (msg: string, data?: any) => void }) {
   const [data, setData] = useState(SEED_DATA);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialPapers && initialPapers.length > 0) {
+      if (onLog) onLog(`Received ${initialPapers.length} papers from DiscoveryAgent`, { count: initialPapers.length });
+      // Map Paper type to AnalysisAgent data format if needed
+      const mappedData = initialPapers.map(p => ({
+        title: p.title,
+        authors: p.authors.split(', '),
+        institution: p.source === 'semantic' ? 'Semantic Scholar' : p.source === 'openalex' ? 'OpenAlex' : 'arXiv',
+        year: p.year || 2024,
+        keywords: [], // DiscoveryAgent doesn't provide keywords directly
+        citations: p.citationCount || 0
+      }));
+      setData(mappedData);
+    }
+  }, [initialPapers]);
   const [synthesizing, setSynthesizing] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [showInput, setShowInput] = useState(false);
@@ -437,12 +453,15 @@ export default function AnalysisAgent({ onHandoff }: { onHandoff?: (data: TrendD
   const handleHandoff = async () => {
     if (!onHandoff) return;
     setSynthesizing(true);
+    if (onLog) onLog("Synthesizing trend data from paper list.");
     try {
       // Synthesize the current data into a TrendDataContract
       const trendReport = await analysisAgent(data);
+      if (onLog) onLog("Trend report generated successfully", trendReport);
       onHandoff(trendReport);
     } catch (error) {
       console.error("Handoff failed:", error);
+      if (onLog) onLog("Handoff failed", { error: String(error) });
     } finally {
       setSynthesizing(false);
     }

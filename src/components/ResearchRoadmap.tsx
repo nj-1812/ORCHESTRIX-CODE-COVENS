@@ -17,7 +17,7 @@ import { cn } from '../lib/utils';
 import { roadmapAgent } from '../services/geminiService';
 import type { ResearchRoadmap as RoadmapData, TrendDataContract } from '../types';
 
-export default function ResearchRoadmap({ trendData }: { trendData?: TrendDataContract | null }) {
+export default function ResearchRoadmap({ trendData, onLog }: { trendData?: TrendDataContract | null, onLog?: (msg: string, data?: any) => void }) {
   const [query, setQuery] = useState('');
   const [userNotes, setUserNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,11 +26,14 @@ export default function ResearchRoadmap({ trendData }: { trendData?: TrendDataCo
   const handleGenerate = async () => {
     if (!query.trim()) return;
     setLoading(true);
+    if (onLog) onLog("Generating structured research path with agent routing.", { query, trendDataConnected: !!trendData });
     try {
       const data = await roadmapAgent(query, trendData || undefined, userNotes);
+      if (onLog) onLog("Research roadmap generated successfully", data);
       setRoadmap(data);
     } catch (error) {
       console.error('Error generating roadmap:', error);
+      if (onLog) onLog("Roadmap generation failed", { error: String(error) });
     } finally {
       setLoading(false);
     }

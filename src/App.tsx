@@ -14,10 +14,11 @@ import {
   Quote,
   Bell,
   Upload,
-  Telescope
+  Telescope,
+  Activity
 } from 'lucide-react';
 import { cn } from './lib/utils';
-import type { UserProfile, TrendDataContract } from './types';
+import type { UserProfile, TrendDataContract, Paper } from './types';
 
 // Components
 import Dashboard from './components/Dashboard';
@@ -54,7 +55,20 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [trendData, setTrendData] = useState<TrendDataContract | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'research' | 'projects' | 'integrations' | 'discovery' | 'citations' | 'pdf' | 'digest' | 'vault' | 'tracker' | 'summarizer' | 'calendar' | 'analysis' | 'sandbox' | 'deep-research' | 'roadmap'>('dashboard');
+  const [initialPapers, setInitialPapers] = useState<Paper[]>([]);
+  const [traceLogs, setTraceLogs] = useState<{ agent: string; message: string; timestamp: string; payload?: any }[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'research' | 'projects' | 'integrations' | 'discovery' | 'citations' | 'pdf' | 'digest' | 'vault' | 'tracker' | 'summarizer' | 'calendar' | 'analysis' | 'sandbox' | 'deep-research' | 'roadmap' | 'trace'>('dashboard');
+
+  const logEvent = (agent: string, message: string, payload?: any) => {
+    const newLog = {
+      agent,
+      message,
+      timestamp: new Date().toISOString(),
+      payload
+    };
+    setTraceLogs(prev => [newLog, ...prev].slice(0, 50));
+    console.log(`[${agent}] -> ${message}`, payload);
+  };
 
   if (!isLoggedIn) {
     return <LoginOverlay onLogin={(email) => {
@@ -91,6 +105,7 @@ export default function App() {
             <NavItem icon={<BarChart3 className="w-5 h-5" />} label="Analysis Agent" active={activeTab === 'analysis'} onClick={() => setActiveTab('analysis')} />
             <NavItem icon={<FileSearch className="w-5 h-5" />} label="Summarizer Agent" active={activeTab === 'summarizer'} onClick={() => setActiveTab('summarizer')} />
             <NavItem icon={<Telescope className="w-5 h-5" />} label="Discovery Agent" active={activeTab === 'discovery'} onClick={() => setActiveTab('discovery')} />
+            <NavItem icon={<Activity className="w-5 h-5" />} label="System Trace Log" active={activeTab === 'trace'} onClick={() => setActiveTab('trace')} />
             <NavItem icon={<Upload className="w-5 h-5" />} label="PDF Analysis" active={activeTab === 'pdf'} onClick={() => setActiveTab('pdf')} />
             <NavItem icon={<Search className="w-5 h-5" />} label="New Project" active={activeTab === 'research'} onClick={() => setActiveTab('research')} />
             
@@ -138,7 +153,17 @@ export default function App() {
             {activeTab === 'research' && <ResearchPanel key="research" />}
             {activeTab === 'projects' && <NotesManager key="projects" />}
             {activeTab === 'integrations' && <IntegrationsView key="integrations" />}
-            {activeTab === 'discovery' && <DiscoveryAgent key="discovery" />}
+            {activeTab === 'discovery' && (
+              <DiscoveryAgent 
+                key="discovery" 
+                onHandoff={(papers) => {
+                  logEvent('DiscoveryAgent', 'Handoff to AnalysisAgent', { count: papers.length });
+                  setInitialPapers(papers);
+                  setActiveTab('analysis');
+                }}
+                onLog={(msg, data) => logEvent('DiscoveryAgent', msg, data)}
+              />
+            )}
             {activeTab === 'citations' && <CitationEngine key="citations" />}
             {activeTab === 'pdf' && <PDFSummarizer key="pdf" />}
             {activeTab === 'digest' && <DigestSubscription key="digest" />}
@@ -146,10 +171,33 @@ export default function App() {
             {activeTab === 'tracker' && <ProjectTracker key="tracker" />}
             {activeTab === 'summarizer' && <SummarizerAgent key="summarizer" />}
             {activeTab === 'calendar' && <ResearchCalendar key="calendar" />}
-            {activeTab === 'analysis' && <AnalysisAgent key="analysis" onHandoff={(data) => { setTrendData(data); setActiveTab('roadmap'); }} />}
+            {activeTab === 'analysis' && (
+              <AnalysisAgent 
+                key="analysis" 
+                initialPapers={initialPapers}
+                onHandoff={(data) => { 
+                  logEvent('AnalysisAgent', 'Handoff to RoadmapAgent', data);
+                  setTrendData(data); 
+                  setActiveTab('roadmap'); 
+                }} 
+                onLog={(msg, data) => logEvent('AnalysisAgent', msg, data)}
+              />
+            )}
             {activeTab === 'sandbox' && <PeerSandbox key="sandbox" userId={user.uid} />}
-            {activeTab === 'deep-research' && <DeepResearchAgent key="deep-research" />}
-            {activeTab === 'roadmap' && <ResearchRoadmap key="roadmap" trendData={trendData} />}
+            {activeTab === 'deep-research' && (
+              <DeepResearchAgent 
+                key="deep-research" 
+                onLog={(msg, data) => logEvent('DeepResearchAgent', msg, data)}
+              />
+            )}
+            {activeTab === 'roadmap' && (
+              <ResearchRoadmap 
+                key="roadmap" 
+                trendData={trendData} 
+                onLog={(msg, data) => logEvent('RoadmapAgent', msg, data)}
+              />
+            )}
+            {activeTab === 'trace' && <TraceLogView key="trace" logs={traceLogs} onClear={() => setTraceLogs([])} />}
           </AnimatePresence>
         </div>
       </main>
@@ -194,5 +242,66 @@ function IntegrationCard({ title, desc, icon, connected }: { title: string, desc
         {connected ? "Connected" : "Connect"}
       </button>
     </div>
+  );
+}
+
+function TraceLogView({ logs, onClear }: { logs: any[], onClear: () => void }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-white mb-1 flex items-center gap-3">
+            <Activity className="w-8 h-8 text-indigo-400" />
+            System Trace Log
+          </h2>
+          <p className="text-slate-400">Real-time inter-agent communication and data handoff logs.</p>
+        </div>
+        <button onClick={onClear} className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">
+          Clear Logs
+        </button>
+      </div>
+
+      <div className="bg-[#0a0a0a] border border-slate-800/50 rounded-2xl overflow-hidden shadow-2xl">
+        <div className="p-4 border-b border-slate-800/50 bg-slate-900/30 flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <div className="w-24">Timestamp</div>
+          <div className="w-32">Agent</div>
+          <div className="flex-1">Message</div>
+        </div>
+        <div className="divide-y divide-slate-800/50 max-h-[600px] overflow-y-auto">
+          {logs.length > 0 ? logs.map((log, i) => (
+            <div key={i} className="p-4 flex items-start gap-4 hover:bg-slate-900/20 transition-colors group">
+              <div className="w-24 text-[10px] font-mono text-slate-600 mt-1">
+                {new Date(log.timestamp).toLocaleTimeString()}
+              </div>
+              <div className="w-32">
+                <span className={cn(
+                  "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
+                  log.agent === 'DiscoveryAgent' ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                  log.agent === 'AnalysisAgent' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                  log.agent === 'RoadmapAgent' ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
+                  "bg-slate-800 text-slate-400"
+                )}>
+                  {log.agent}
+                </span>
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-sm text-slate-300 font-medium">{log.message}</p>
+                {log.payload && (
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-3 overflow-x-auto">
+                    <pre className="text-[10px] text-slate-500 font-mono">
+                      {JSON.stringify(log.payload, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )) : (
+            <div className="p-20 text-center text-slate-600 italic text-sm">
+              No logs recorded yet. Initiate agent actions to see trace data.
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }

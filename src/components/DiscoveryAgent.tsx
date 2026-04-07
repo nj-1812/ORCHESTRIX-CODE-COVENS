@@ -1,23 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, ExternalLink, ChevronRight, ChevronLeft, Zap, FileText, Sparkles, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Loader2, ExternalLink, ChevronRight, ChevronLeft, Zap, FileText, Sparkles, X, CheckCircle2, AlertCircle, Send } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { pdfSummarizerAgent, crossPaperSynthesisAgent } from '../services/geminiService';
+import type { Paper } from '../types';
 
-interface Paper {
-  source: string;
-  title: string;
-  authors: string;
-  year: number | null;
-  abstract: string;
-  citationCount: number | null;
-  url: string | null;
-  doi: string | null;
-  score?: number;
-  relevanceScore?: number;
-}
-
-export default function DiscoveryAgent() {
+export default function DiscoveryAgent({ onHandoff, onLog }: { onHandoff?: (papers: Paper[]) => void, onLog?: (msg: string, data?: any) => void }) {
   const [query, setQuery] = useState('');
   const [source, setSource] = useState('all');
   const [minYear, setMinYear] = useState('');
@@ -86,6 +74,7 @@ export default function DiscoveryAgent() {
 
     try {
       const endpoints = [];
+      if (onLog) onLog(`Searching repositories for: ${query}`);
       if (source === 'all' || source === 'semantic') {
         endpoints.push(`/api/academic/search?query=${encodeURIComponent(query)}&offset=${(page - 1) * perPage}&limit=${perPage}`);
       }
@@ -217,6 +206,7 @@ export default function DiscoveryAgent() {
       }
 
       setResults(scored);
+      if (onLog) onLog(`Found ${scored.length} papers across sources`, { query, count: scored.length });
     } catch (err) {
       setError('Failed to fetch research papers. Please try again.');
     } finally {
@@ -257,6 +247,21 @@ export default function DiscoveryAgent() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
       <div className="bg-[#0a0a0a] border border-slate-800/50 rounded-2xl p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-2xl font-bold text-white">Discovery Agent</h2>
+            <p className="text-xs text-slate-500">Search and aggregate academic papers from multiple repositories.</p>
+          </div>
+          {results.length > 0 && onHandoff && (
+            <button 
+              onClick={() => onHandoff(results)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold hover:bg-emerald-500/20 transition-all"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Handoff to Analysis
+            </button>
+          )}
+        </div>
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />

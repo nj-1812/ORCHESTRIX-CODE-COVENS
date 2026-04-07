@@ -33,7 +33,7 @@ interface ResearchReport {
   timestamp: string;
 }
 
-export default function DeepResearchAgent() {
+export default function DeepResearchAgent({ onLog }: { onLog?: (msg: string, data?: any) => void }) {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [report, setReport] = useState<ResearchReport | null>(null);
@@ -52,6 +52,7 @@ export default function DeepResearchAgent() {
     
     setIsSearching(true);
     setReport(null);
+    if (onLog) onLog(`Searching repositories for: ${query}`);
 
     try {
       const refinedPrompt = `
@@ -100,6 +101,7 @@ export default function DeepResearchAgent() {
       };
 
       setReport(newReport);
+      if (onLog) onLog("Research report generated successfully", newReport);
       setHistory(prev => [newReport, ...prev].slice(0, 10));
       setQuery('');
     } catch (err) {
