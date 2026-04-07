@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-sky-400: #38bdf8;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+  --color-amber-400: #fbbf24;
+
+  /* Knowledge Dashboard Colors */
+  --color-kd-bg: #0c0c0e;
+  --color-kd-card: #111114;
+  --color-kd-raised: #17171b;
+  --color-kd-hover: #1c1c21;
+  --color-kd-accent: #c8a96e;
+  --color-kd-accent-dim: rgba(200,169,110,0.12);
+  --color-kd-accent-border: rgba(200,169,110,0.28);
+}
